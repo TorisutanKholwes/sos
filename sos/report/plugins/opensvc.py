@@ -28,6 +28,20 @@ class Opensvc(Plugin, IndependentPlugin):
                 )
 
     def setup(self):
+        # sec and usr objects configs hold secrets in clear text.
+        # Globbed forbidden paths must match the files, not only their
+        # parent directory.
+        self.add_forbidden_path([
+            "/etc/opensvc/sec",
+            "/etc/opensvc/usr",
+            "/etc/opensvc/namespaces/*/sec/*",
+            "/etc/opensvc/namespaces/*/usr/*",
+            "/var/lib/opensvc/sec",
+            "/var/lib/opensvc/usr",
+            "/var/lib/opensvc/namespaces/*/sec/*",
+            "/var/lib/opensvc/namespaces/*/usr/*",
+        ])
+
         self.add_copy_spec([
             "/etc/opensvc/*",
             "/var/log/opensvc/*",
@@ -43,9 +57,7 @@ class Opensvc(Plugin, IndependentPlugin):
             "/var/lib/opensvc/compliance/*",
             "/var/lib/opensvc/namespaces/*",
             "/var/lib/opensvc/node/*",
-            "/var/lib/opensvc/sec/*",
             "/var/lib/opensvc/svc/*",
-            "/var/lib/opensvc/usr/*",
             "/var/lib/opensvc/vol/*",
         ])
         self.add_cmd_output([
@@ -90,11 +102,12 @@ class Opensvc(Plugin, IndependentPlugin):
         # type = relay
         # timeout = 30
 
-        regexp = r"(\s*secret =\s*)\S+"
-        self.do_file_sub(
-            "/etc/opensvc/cluster.conf",
-            regexp,
-            r"\1****************************"
-        )
+        regex = r"(\s*(?:secret|uuid)\s*=\s*)\S+"
+        for conf in ("cluster.conf", "node.conf"):
+            self.do_file_sub(
+                f"/etc/opensvc/{conf}",
+                regex,
+                r"\1****************************"
+            )
 
 # vim: set et ts=4 sw=4 :
